@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter};
 
 use inquire::{required, CustomType, DateSelect, Select, Text};
 
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 mod config;
 
@@ -52,7 +52,7 @@ pub struct TimesheetEditForm {
 fn api_request<T: DeserializeOwned, B: Serialize>(
     config: &config::Config,
     url: &str,
-    body: Option<&B>
+    body: Option<&B>,
 ) -> Result<T> {
     let url = config.endpoint.to_owned() + url;
     let mut request = match body {
@@ -70,13 +70,15 @@ fn api_request<T: DeserializeOwned, B: Serialize>(
     };
 
     let response = match response {
-        Ok(response) => {
-            Ok(response)
-        },
+        Ok(response) => Ok(response),
         Err(ureq::Error::Status(code, response)) => {
             /* the server returned an unexpected status
-               code (such as 400, 500 etc) */
-            Err(anyhow::anyhow!("Server returned status code {}: {}", code, response.into_string().unwrap()))
+            code (such as 400, 500 etc) */
+            Err(anyhow::anyhow!(
+                "Server returned status code {}: {}",
+                code,
+                response.into_string().unwrap()
+            ))
         }
         Err(e) => {
             anyhow::bail!("Request failed: {:?}", e)
@@ -88,18 +90,11 @@ fn api_request<T: DeserializeOwned, B: Serialize>(
 }
 
 fn get_projects(config: &config::Config) -> Result<Vec<Project>> {
-    api_request(
-        config,
-        "/api/projects?visible=1",
-        None::<&()>
-    )
+    api_request(config, "/api/projects?visible=1", None::<&()>)
 }
 
 fn get_activities_by_project(config: &config::Config, project_id: i32) -> Result<Vec<Activity>> {
-    let url = format!(
-        "/api/activities?visible=1&projects[]={}",
-        project_id
-    );
+    let url = format!("/api/activities?visible=1&projects[]={}", project_id);
     api_request(config, &url, None::<&()>)
 }
 
